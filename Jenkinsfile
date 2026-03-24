@@ -26,28 +26,15 @@ pipeline {
              sh 'mvn clean package -Dmaven.test.failure.ignore=true'
          }
      }
-     stage('Docker Image Create') {
-         steps {
-             echo 'Docker Image Create'
+     stage('Docker Build  && Push') {
+         steps {           
              sh '''
                docker build -t ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER} .
                docker tag ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER} lkh99/${DOCKER_IMAGE_NAME}:latest
+               echo ${DOCKERHUB_CRED_PSW} | docker login -u ${DOCKERHUB_CRED_USR} --password-stdin
+               docker push lkh99/${DOCKER_IMAGE_NAME}:latest
              '''
-         }
-     }
-     stage('Dokcer Hub Login') {
-         steps {
-             echo 'Dokcer Hub Login'
-             sh 'echo ${DOCKERHUB_CRED_PSW} | docker login -u ${DOCKERHUB_CRED_USR} --password-stdin'
-         }
-     }
-     stage('Docker Image Push') {
-         steps {
-             echo 'Docker Image Push'
-             sh '''
-             docker push lkh99/${DOCKER_IMAGE_NAME}:latest
-             '''
-         }
+         }          
          post {
           always {
            sh '''
@@ -60,6 +47,26 @@ pipeline {
      stage('Dokcer Container Run') {
          steps {
              echo 'Dokcer Container Run'
+             sshPublisher(publishers: [sshPublisherDesc(configName: 'Target',
+             transfers: [sshTransfer(cleanRemote: false,
+             excludes: '',
+             execCommand: '''
+             docker rm -f $(docker ps -aq)
+             docker rmi -f $(docker iamges -q)
+             docker run -itd -p 80:8080 --name spring-petclinic lkh99/spring-petclinic:latest
+             ''',
+             execTimeout: 120000,
+             flatten: false,
+             makeEmptyDirs: false,
+             noDefaultExcludes: false,
+             patternSeparator: '[, ]+',
+             remoteDirectory: '',
+             remoteDirectorySDF: false,
+             removePrefix: 'Target',
+             sourceFiles: '')],
+             usePromotionTimestamp: false,
+             useWorkspaceInPromotion: false,
+             verbose: false)])
          }
      }
  }

@@ -5,7 +5,7 @@ pipeline {
     jdk 'JDK21'
     maven 'M3'
  }
- enviroment {
+ environment {
   // 환경변수 지정
   DOCKER_IMAGE_NAME = "spring-petclinic"
 
